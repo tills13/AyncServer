@@ -62,7 +62,7 @@ public class Channel extends Thread {
                     	response.addField("reason", "failed to generate token");
                     } else {
                     	response.setToken(token);
-                    	server.log("generated token for: " + this.channel);
+                    	server.log("generated token for: " + getLongName());
                     }
 				} else {
 					response.addField("type", "token-request-failure");
@@ -71,6 +71,8 @@ public class Channel extends Thread {
 
 				break;
 			case 2: 
+				System.out.println("data request");
+				System.out.println(request);
 				if (server.authenticate(getConsumerName(), request.getToken())) {
 					//if (request.getField("data-type").equals("active-connections")) response.addField("active-connections", server.connected.size() + "");
 					response.addField("active-connections", server.connected.size() + "");
@@ -83,7 +85,7 @@ public class Channel extends Thread {
 				break;
 			case 3:
 				if (server.authenticate(getConsumerName(), request.getToken())) {
-
+					System.out.println("hello");
 				} else {
 					server.log("invalid token: " + this.channel + " " + request.getField("type"));
 					response.addField("type", "command-execute-failure");
@@ -124,6 +126,8 @@ public class Channel extends Thread {
 		} catch (IOException e) {
 
 		}
+
+		return "";
 	}
 
 	public boolean getActive() {

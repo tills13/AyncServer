@@ -54,6 +54,7 @@ public class TestClient {
 					} else if (message.equals("3")) {
 						request.addField("type", "data-request");
 						request.addField("data-type", "active-connections");
+						System.out.println(token);
 						request.setToken(token);
 
 						out.writeObject(request);

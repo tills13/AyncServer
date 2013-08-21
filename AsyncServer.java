@@ -45,9 +45,9 @@ public class AsyncServer {
 	}
 
 	public void channelConnected(SocketChannel channel) throws IOException {
-		if (connected.size() == MAX_CONNECTIONS) channelDisconnected(channel, "MAX_CONNECTIONS");
+		Channel client = new Channel(this, channel);
+		if (connected.size() == MAX_CONNECTIONS) channelDisconnected(client, "MAX_CONNECTIONS");
 		else {
-			Channel client = new Channel(this, channel);
 			notifyConnect(client);
 			connected.add(client);
 
@@ -63,7 +63,7 @@ public class AsyncServer {
 		notifyDisconnect(channel, reason);
 		connected.remove(channel);
 
-		channel.close();
+		channel.getChannel().close();
 	}
 
 	public void notifyConnect(Channel channel) {
