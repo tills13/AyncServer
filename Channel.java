@@ -5,14 +5,14 @@ import java.io.IOException;
 import java.net.Socket;
 import java.net.InetSocketAddress;
 
-public class Client extends Thread {
+public class Channel extends Thread {
 	private SocketChannel channel;
 	private ObjectOutputStream out;
 	private ObjectInputStream in;
 	private boolean active;
-	private HTTPServer server;
+	private AsyncServer server;
 
-	public Client(HTTPServer server, SocketChannel channel) throws IOException {
+	public Channel(AsyncServer server, SocketChannel channel) throws IOException {
 		this.channel = channel;
 		this.out = new ObjectOutputStream(channel.socket().getOutputStream());
 		this.in = new ObjectInputStream(channel.socket().getInputStream());
@@ -41,7 +41,7 @@ public class Client extends Thread {
 
 			if (!this.active) {
 				try {
-					server.channelDisconnected(channel, disconnectMessage);
+					server.channelDisconnected(this, disconnectMessage);
 				} catch (IOException e) {
 					server.log("error: " + this.channel + " - " + e.getMessage());
 				}
@@ -57,11 +57,16 @@ public class Client extends Thread {
 				if (request.getField("password").equals("password")) {
 					response.addField("type", "token-request-success");
                     TokenPair token = server.generateTokenPair(getConsumerName());
-                    if (token == null) return generateFailure("could not generate token pair");
-                    response.setToken(token);
-                    server.log("generated token for: " + this.channel);
+                    if (token == null) {
+                    	response.addField("type", "token-request-failure");
+                    	response.addField("reason", "failed to generate token");
+                    } else {
+                    	response.setToken(token);
+                    	server.log("generated token for: " + this.channel);
+                    }
 				} else {
-					return generateFailure("incorrect password");
+					response.addField("type", "token-request-failure");
+                    response.addField("reason", "incorrect password");
 				}
 
 				break;
@@ -71,11 +76,19 @@ public class Client extends Thread {
 					response.addField("active-connections", server.connected.size() + "");
 				} else {
 					server.log("invalid token: " + this.channel + " " + request.getField("type"));
-					return generateFailure("invalid token");
+					response.addField("type", "data-request-failure");
+					response.addField("reason", "invalid token");
 				}
+
 				break;
 			case 3:
-				System.out.println("case 3");
+				if (server.authenticate(getConsumerName(), request.getToken())) {
+
+				} else {
+					server.log("invalid token: " + this.channel + " " + request.getField("type"));
+					response.addField("type", "command-execute-failure");
+					response.addField("reason", "invalid token");
+				}
 				break;
 			case 4: 
 				System.out.println("case 4");
@@ -83,13 +96,6 @@ public class Client extends Thread {
 			case 5: 
 
 		}
-
-		return response;
-	}
-
-	public NetResponse generateFailure(String reason) {
-		NetResponse response = new NetResponse();
-		response.addField("fail", reason);
 
 		return response;
 	}
@@ -110,6 +116,14 @@ public class Client extends Thread {
 		}
 
 		return "";
+	}
+
+	public String getLongName() {
+		try {
+			return "[" + this.channel.getRemoteAddress() + ", " + ((InetSocketAddress)this.channel.getRemoteAddress()).getPort() + "]";
+		} catch (IOException e) {
+
+		}
 	}
 
 	public boolean getActive() {

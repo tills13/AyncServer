@@ -14,26 +14,26 @@ import java.util.HashMap;
 
 import org.apache.commons.codec.digest.DigestUtils;
 
-public class HTTPServer {
+public class AsyncServer {
 	ServerSocket server;
 	ServerSocketChannel serverChannel;
-	List<Client> connected = new ArrayList<Client>();
+	List<Channel> connected = new ArrayList<Channel>();
 
 	//defaults
 	public static final int DEFAULT_PORT = 8000;
 	public static final int MAX_CONNECTIONS = 4;
 	private static final Map<String, TokenPair> TOKEN_CACHE = new HashMap<String, TokenPair>();
 
-	public HTTPServer() throws IOException {
+	public AsyncServer() throws IOException {
 		this(DEFAULT_PORT);
 	}
 
-	public HTTPServer(int port) throws IOException {
+	public AsyncServer(int port) throws IOException {
 		this.serverChannel = ServerSocketChannel.open();
 		this.serverChannel.bind(new InetSocketAddress(port));
 		this.server = serverChannel.socket();
 
-		System.out.println("Server started at " + serverChannel.getLocalAddress());
+		System.out.println("Server listening on " + serverChannel.getLocalAddress());
 	}
 
 	public void run() {
@@ -47,41 +47,31 @@ public class HTTPServer {
 	public void channelConnected(SocketChannel channel) throws IOException {
 		if (connected.size() == MAX_CONNECTIONS) channelDisconnected(channel, "MAX_CONNECTIONS");
 		else {
-			Client client = new Client(this, channel);
-			notifyConnect(channel);
+			Channel client = new Channel(this, channel);
+			notifyConnect(client);
 			connected.add(client);
 
 			client.start();
 		}
 	}
 
-	public void channelDisconnected(SocketChannel channel) throws IOException {
+	public void channelDisconnected(Channel channel) throws IOException {
 		channelDisconnected(channel, "CHANNEL_DISCONNECTED");
 	}
 
-	public void channelDisconnected(SocketChannel channel, String reason) throws IOException {
+	public void channelDisconnected(Channel channel, String reason) throws IOException {
 		notifyDisconnect(channel, reason);
 		connected.remove(channel);
 
 		channel.close();
 	}
 
-	public void notifyConnect(SocketChannel channel) {
-		try {
-			log(((InetSocketAddress)channel.getRemoteAddress()).getHostName() + " connected: [" + channel.getRemoteAddress() + ", " + ((InetSocketAddress)channel.getRemoteAddress()).getPort() + "]");
-		} catch (IOException e) {
-
-		} 
+	public void notifyConnect(Channel channel) {
+		log(channel.getConsumerName() + " connected: " + channel.getLongName());
 	}
 
-	public void notifyDisconnect(SocketChannel channel, String reason) {
-		try {
-			String message = ((InetSocketAddress)channel.getRemoteAddress()).getHostName() + " disconnected: [" + channel.getRemoteAddress() + ", " + ((InetSocketAddress)channel.getRemoteAddress()).getPort() + "]";
-			if (reason != "") message += " (REASON: " + reason + ")";
-			log(message);
-		} catch (IOException e) {
-
-		} 
+	public void notifyDisconnect(Channel channel, String reason) {
+		log((reason == "") ? channel.getConsumerName() + " disconnected: " + channel.getLongName() : channel.getConsumerName() + " disconnected: " + channel.getLongName() + " (REASON: " + reason + ")");
 	}
 
 	public TokenPair generateTokenPair(String consumer_name) {
